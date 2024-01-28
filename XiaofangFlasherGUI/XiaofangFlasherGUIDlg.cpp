@@ -95,11 +95,14 @@ DWORD WINAPI FlasherMain(LPVOID lpParam) {
 
 	char command[2048];
 	sprintf_s(command, "avrdude.exe -C avrdude.conf -v -v  -p atmega328p -c arduino -P %s -b 115200 -D -U flash:w:\"%s\":i", TargetSerial.c_str(), TargetHexFile.c_str());
-	pDlg->SetDlgItemTextA(IDC_STATIC_STATUS, "检测到小方接入，开始烧录\r\n正在烧录...");
+	pDlg->SetDlgItemTextA(IDC_STATIC_STATUS, "检测到小方接入，正在烧录，请勿关闭弹出的窗口");
 	pDlg->SetWindowPos(&CWnd::wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
-	system(command);
+	bool ret=system(command);
 	pDlg->SetWindowPos(&CWnd::wndNoTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
-	pDlg->SetDlgItemTextA(IDC_STATIC_STATUS, "检测到小方接入，开始烧录\r\n正在烧录...\r\n烧录完成！");
+	if(ret)
+		pDlg->SetDlgItemTextA(IDC_STATIC_STATUS, "错误：avrdude未正常退出，烧录失败\r\n请检查USB线缆连接后重启软件重试");
+	else
+		pDlg->SetDlgItemTextA(IDC_STATIC_STATUS, "烧录完成！现在可以退出程序");
 	return 0;
 }
 
@@ -227,15 +230,16 @@ BOOL CXiaofangFlasherGUIDlg::CanExit()
 void CXiaofangFlasherGUIDlg::OnBnClickedButton1()
 {
 	// TODO: 在此添加控件通知处理程序代码
-
+	((CButton*)GetDlgItem(IDC_BUTTON1))->EnableWindow(FALSE);
 	CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, "HEX file(*.hex)|*.hex||", NULL);
 	if (dlg.DoModal() != IDOK) {
 		MessageBox("请选择更新文件！", "Info", MB_ICONINFORMATION);
+		((CButton*)GetDlgItem(IDC_BUTTON1))->EnableWindow(TRUE);
 		return;
 	}
 	TargetHexFile = dlg.GetPathName();
 	CString str;
-	str.Format("已选择文件：%s\r\n请连接小方", TargetHexFile.c_str());
+	str.Format("已选择文件，请连接小方", TargetHexFile.c_str());
 	SetDlgItemText(IDC_STATIC_STATUS, str);
 	isReady = true;
 }
