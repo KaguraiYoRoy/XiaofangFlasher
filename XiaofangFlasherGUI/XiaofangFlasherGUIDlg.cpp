@@ -10,6 +10,7 @@
 #include "afxdialogex.h"
 #include <string>
 #include <SetupAPI.h>
+#include <Dbt.h>
 #include <devguid.h>
 
 #pragma comment(lib, "setupapi.lib")
@@ -49,6 +50,7 @@ BEGIN_MESSAGE_MAP(CXiaofangFlasherGUIDlg, CDialogEx)
 	ON_WM_CLOSE()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_WM_DEVICECHANGE()
 	ON_BN_CLICKED(IDC_BUTTON1, &CXiaofangFlasherGUIDlg::OnBnClickedButton1)
 END_MESSAGE_MAP()
 
@@ -56,20 +58,10 @@ END_MESSAGE_MAP()
 // CXiaofangFlasherGUIDlg 消息处理程序
 std::string Serials[256];
 std::string TargetHexFile;
+std::string TargetSerial;
 DWORD ThreadID;
 HANDLE hThread;
-CRegKey RegKey;
-
-bool is64BitOS() {//判断是否为64位系统
-	SYSTEM_INFO cur_system_info;
-	GetNativeSystemInfo(&cur_system_info);
-	WORD system_str = cur_system_info.wProcessorArchitecture;
-	if (system_str == PROCESSOR_ARCHITECTURE_IA64 || system_str == PROCESSOR_ARCHITECTURE_AMD64)
-	{
-		return true;
-	}
-	return false;
-}
+bool deviceFound,isReady;
 
 BOOL FreeResFile(DWORD dwResName, LPCSTR lpResType, LPCSTR lpFilePathName) {
 	HMODULE hInstance = ::GetModuleHandle(NULL);//得到自身实例句柄  
@@ -101,54 +93,6 @@ BOOL FreeResFile(DWORD dwResName, LPCSTR lpResType, LPCSTR lpFilePathName) {
 DWORD WINAPI FlasherMain(LPVOID lpParam) {
 	CXiaofangFlasherGUIDlg* pDlg = (CXiaofangFlasherGUIDlg*)lpParam;
 
-	std::string TargetSerial;
-	bool deviceFound = false;
-
-	while (true) {
-		Sleep(200);
-
-		if (RegKey.Open(HKEY_LOCAL_MACHINE, "HARDWARE\\DEVICEMAP\\SERIALCOMM") == ERROR_SUCCESS) {
-			int nCount = 0;
-			while (true) {
-				char ValueName[_MAX_PATH];
-				unsigned char ValueData[_MAX_PATH];
-				DWORD nValueSize = _MAX_PATH;
-				DWORD nDataSize = _MAX_PATH;
-				DWORD nType;
-
-				if (::RegEnumValue(HKEY(RegKey), nCount, ValueName, &nValueSize, NULL, &nType, ValueData, &nDataSize) == ERROR_NO_MORE_ITEMS) {
-					break;
-				}
-
-				if (Serials[nCount] != static_cast<std::string>((LPCSTR)ValueData)) {
-					TargetSerial = static_cast<std::string>((LPCSTR)ValueData);
-					HDEVINFO hDevInfo = SetupDiGetClassDevs(&GUID_DEVCLASS_PORTS, NULL, NULL, 0);
-					if (hDevInfo) {
-						SP_DEVINFO_DATA SpDevInfo = { sizeof(SP_DEVINFO_DATA) };
-						for (DWORD iDevIndex = 0; SetupDiEnumDeviceInfo(hDevInfo, iDevIndex, &SpDevInfo); iDevIndex++) {
-							char szName[512] = { 0 };
-							if (SetupDiGetDeviceRegistryProperty(hDevInfo, &SpDevInfo, SPDRP_FRIENDLYNAME,
-								NULL, (PBYTE)szName, sizeof(szName), NULL)) {
-								std::string str = szName;
-								int index1 = str.find("CH340"), index2 = str.find(TargetSerial);
-								if (index1 != std::string::npos && index2 != std::string::npos) {
-									deviceFound = true;
-									break;
-								}
-							}
-						}
-						SetupDiDestroyDeviceInfoList(hDevInfo);
-					}
-				}
-
-				if (deviceFound)break;
-
-				nCount++;
-			}
-		}
-		if (deviceFound)break;
-	}
-
 	char command[2048];
 	sprintf_s(command, "avrdude.exe -C avrdude.conf -v -v  -p atmega328p -c arduino -P %s -b 115200 -D -U flash:w:\"%s\":i", TargetSerial.c_str(), TargetHexFile.c_str());
 	pDlg->SetDlgItemTextA(IDC_STATIC_STATUS, "检测到小方接入，开始烧录\r\n正在烧录...");
@@ -157,6 +101,23 @@ DWORD WINAPI FlasherMain(LPVOID lpParam) {
 	pDlg->SetWindowPos(&CWnd::wndNoTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
 	pDlg->SetDlgItemTextA(IDC_STATIC_STATUS, "检测到小方接入，开始烧录\r\n正在烧录...\r\n烧录完成！");
 	return 0;
+}
+
+BOOL CXiaofangFlasherGUIDlg::OnDeviceChange(UINT nEventType, DWORD dwData)
+{
+	PDEV_BROADCAST_HDR lpdb = (PDEV_BROADCAST_HDR)dwData;
+	switch (nEventType) {
+	case DBT_DEVICEARRIVAL:
+		if (!deviceFound && isReady && lpdb->dbch_devicetype == DBT_DEVTYP_PORT) {
+			TargetSerial = ((PDEV_BROADCAST_PORT)lpdb)->dbcp_name;
+			deviceFound = true;
+			hThread = CreateThread(NULL, 0, FlasherMain, (LPVOID)this, 0, &ThreadID);
+		}
+		break;
+	default:
+		break;
+	}
+	return FALSE;
 }
 
 BOOL CXiaofangFlasherGUIDlg::OnInitDialog()
@@ -169,29 +130,8 @@ BOOL CXiaofangFlasherGUIDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
-	if (RegKey.Open(HKEY_LOCAL_MACHINE, "HARDWARE\\DEVICEMAP\\SERIALCOMM") == ERROR_SUCCESS) {
-		int nCount = 0;
-		while (true)
-		{
-			char ValueName[_MAX_PATH];
-			unsigned char ValueData[_MAX_PATH];
-			DWORD nValueSize = _MAX_PATH;
-			DWORD nDataSize = _MAX_PATH;
-			DWORD nType;
-
-			if (::RegEnumValue(HKEY(RegKey), nCount, ValueName, &nValueSize, NULL, &nType, ValueData, &nDataSize) == ERROR_NO_MORE_ITEMS) {
-				break;
-			}
-
-			Serials[nCount] = static_cast<std::string>((LPCSTR)ValueData);
-
-			nCount++;
-		}
-	}
-	else {
-		MessageBox("错误：无法检测串口设备 请确认以管理员权限运行！\n按任意键退出", "Error", MB_ICONERROR);
-		PostQuitMessage(-1);
-	}
+	deviceFound = false;
+	isReady = false;
 
 	SYSTEM_INFO cur_system_info;
 	GetNativeSystemInfo(&cur_system_info);
@@ -297,5 +237,5 @@ void CXiaofangFlasherGUIDlg::OnBnClickedButton1()
 	CString str;
 	str.Format("已选择文件：%s\r\n请连接小方", TargetHexFile.c_str());
 	SetDlgItemText(IDC_STATIC_STATUS, str);
-	hThread = CreateThread(NULL, 0, FlasherMain, (LPVOID)this, 0, &ThreadID);
+	isReady = true;
 }
