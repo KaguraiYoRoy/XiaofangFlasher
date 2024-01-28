@@ -1,0 +1,29 @@
+﻿// XiaofangFlasherGUI.idl: XiaofangFlasherGUI.exe 的类型库源
+
+// 此文件将由 MIDL 编译器处理以产生
+// 类型库(XiaofangFlasherGUI.tlb)。
+
+[ uuid(4f3593e2-74d2-4cbb-92a2-125719219ba3), version(1.0) ]
+library XiaofangFlasherGUI
+{
+	importlib("stdole32.tlb");
+	importlib("stdole2.tlb");
+
+	//  CXiaofangFlasherGUIDoc 的主调度接口
+
+	[ uuid(840d6ac7-e7dc-440c-9376-e9da0aae3d3a) ]
+	dispinterface IXiaofangFlasherGUI
+	{
+		properties:
+
+		methods:
+	};
+
+	//  CXiaofangFlasherGUIDoc 的类信息
+
+	[ uuid(3f4537c5-e322-49a7-8f44-98a2ca632176) ]
+	coclass XiaofangFlasherGUI
+	{
+		[default] dispinterface IXiaofangFlasherGUI;
+	};
+};
