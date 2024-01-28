@@ -149,11 +149,8 @@ DWORD WINAPI FlasherMain(LPVOID lpParam) {
 		if (deviceFound)break;
 	}
 
-	pDlg->SetDlgItemTextA(IDC_STATIC_STATUS, "检测到小方接入，开始烧录");
-
 	char command[2048];
 	sprintf_s(command, "avrdude.exe -C avrdude.conf -v -v  -p atmega328p -c arduino -P %s -b 115200 -D -U flash:w:\"%s\":i", TargetSerial.c_str(), TargetHexFile.c_str());
-
 	pDlg->SetDlgItemTextA(IDC_STATIC_STATUS, "检测到小方接入，开始烧录\r\n正在烧录...");
 	pDlg->SetWindowPos(&CWnd::wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
 	system(command);
