@@ -56,7 +56,6 @@ END_MESSAGE_MAP()
 
 
 // CXiaofangFlasherGUIDlg 消息处理程序
-std::string Serials[256];
 std::string TargetHexFile;
 std::string TargetSerial;
 bool deviceFound,isReady;
