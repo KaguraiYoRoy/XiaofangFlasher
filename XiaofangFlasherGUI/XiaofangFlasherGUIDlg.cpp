@@ -146,12 +146,11 @@ BOOL CXiaofangFlasherGUIDlg::OnInitDialog()
 	SYSTEM_INFO cur_system_info;
 	GetNativeSystemInfo(&cur_system_info);
 	WORD system_str = cur_system_info.wProcessorArchitecture;
+	FreeResFile(IDR_AVR86, "AVR", "avrdude.exe");
 	if (system_str == PROCESSOR_ARCHITECTURE_IA64 || system_str == PROCESSOR_ARCHITECTURE_AMD64) {
-		FreeResFile(IDR_AVR64, "AVR", "avrdude.exe");
 		FreeResFile(IDR_AVR64CONF, "AVR", "avrdude.conf");
 	}
 	else {
-		FreeResFile(IDR_AVR86, "AVR", "avrdude.exe");
 		FreeResFile(IDR_AVR86CONF, "AVR", "avrdude.conf");
 	}
 

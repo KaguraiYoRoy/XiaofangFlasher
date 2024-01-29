@@ -7,7 +7,6 @@
 #define IDR_MAINFRAME                   128
 #define IDR_ACCELERATOR1                129
 #define IDR_AVR64CONF                   132
-#define IDR_AVR64                       133
 #define IDR_AVR86CONF                   134
 #define IDR_AVR4                        135
 #define IDR_AVR86                       135
