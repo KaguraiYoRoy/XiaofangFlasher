@@ -94,12 +94,22 @@ UINT CXiaofangFlasherGUIDlg::FlasherMain(LPVOID lpParam) {
 	sprintf_s(command, "avrdude.exe -C avrdude.conf -v -v  -p atmega328p -c arduino -P %s -b 115200 -D -U flash:w:\"%s\":i", TargetSerial.c_str(), TargetHexFile.c_str());
 	pDlg->SetDlgItemTextA(IDC_STATIC_STATUS, "检测到小方接入，正在烧录，请勿关闭弹出的窗口");
 	pDlg->SetWindowPos(&CWnd::wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
-	bool ret=system(command);
-	pDlg->SetWindowPos(&CWnd::wndNoTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
-	if(ret)
-		pDlg->SetDlgItemTextA(IDC_STATIC_STATUS, "错误：avrdude未正常退出，烧录失败\r\n请检查USB线缆连接后重启软件重试");
+	STARTUPINFO si;
+	PROCESS_INFORMATION pi;
+	ZeroMemory(&si, sizeof(si));
+	ZeroMemory(&pi, sizeof(pi));
+	GetStartupInfo(&si);
+	if (CreateProcess(NULL, command, NULL, NULL, TRUE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi)) {
+		WaitForSingleObject(pi.hProcess, INFINITE);
+		DWORD dwExitCode;
+		if (GetExitCodeProcess(pi.hProcess, &dwExitCode))
+			pDlg->SetDlgItemTextA(IDC_STATIC_STATUS, dwExitCode == 0 ? "烧录完成！现在可以退出程序" : "错误：avrdude未正常退出，烧录失败\r\n请检查USB线缆连接后重启软件重试");
+		else
+			pDlg->SetDlgItemTextA(IDC_STATIC_STATUS, "警告：无法获取avrdude状态，请自行判断是否烧录成功");
+	}
 	else
-		pDlg->SetDlgItemTextA(IDC_STATIC_STATUS, "烧录完成！现在可以退出程序");
+		pDlg->SetDlgItemTextA(IDC_STATIC_STATUS, "错误：无法调用avrdude\r\n请确认用管理员权限运行");
+	pDlg->SetWindowPos(&CWnd::wndNoTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
 	return 0;
 }
 
