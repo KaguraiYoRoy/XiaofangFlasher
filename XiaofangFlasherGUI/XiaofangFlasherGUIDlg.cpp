@@ -59,8 +59,6 @@ END_MESSAGE_MAP()
 std::string Serials[256];
 std::string TargetHexFile;
 std::string TargetSerial;
-DWORD ThreadID;
-HANDLE hThread;
 bool deviceFound,isReady;
 
 BOOL FreeResFile(DWORD dwResName, LPCSTR lpResType, LPCSTR lpFilePathName) {
@@ -90,7 +88,7 @@ BOOL FreeResFile(DWORD dwResName, LPCSTR lpResType, LPCSTR lpFilePathName) {
 	return (dwResSize == dwWritten);//若写入大小等于文件大小，返回成功，否则失败  
 }
 
-DWORD WINAPI FlasherMain(LPVOID lpParam) {
+UINT CXiaofangFlasherGUIDlg::FlasherMain(LPVOID lpParam) {
 	CXiaofangFlasherGUIDlg* pDlg = (CXiaofangFlasherGUIDlg*)lpParam;
 
 	char command[2048];
@@ -114,7 +112,7 @@ BOOL CXiaofangFlasherGUIDlg::OnDeviceChange(UINT nEventType, DWORD dwData)
 		if (!deviceFound && isReady && lpdb->dbch_devicetype == DBT_DEVTYP_PORT) {
 			TargetSerial = ((PDEV_BROADCAST_PORT)lpdb)->dbcp_name;
 			deviceFound = true;
-			hThread = CreateThread(NULL, 0, FlasherMain, (LPVOID)this, 0, &ThreadID);
+			AfxBeginThread(FlasherMain, this);
 		}
 		break;
 	default:
